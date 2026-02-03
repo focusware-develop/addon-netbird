@@ -21,11 +21,11 @@ It requires near-zero configuration effort, leaving behind the hassle of opening
 ## Installation
 First add the repository:
 
-[![Add to Home Assistant](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2Fnetbirdio%2Faddon-netbird)
+[![Add to Home Assistant](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2Ffocusware-develop%2Faddon-netbird)
 
 Then install the add-on "NetBird Client":
 
-[![Open your Home Assistant instance and show the dashboard of a Supervisor add-on.](https://my.home-assistant.io/badges/supervisor_addon.svg)](https://my.home-assistant.io/redirect/supervisor_addon/?addon=7edd9457_netbird&repository_url=https%3A%2F%2Fgithub.com%2Fnetbirdio%2Faddon-netbird)
+[![Open your Home Assistant instance and show the dashboard of a Supervisor add-on.](https://my.home-assistant.io/badges/supervisor_addon.svg)](https://my.home-assistant.io/redirect/supervisor_addon/?addon=7edd9457_netbird&repository_url=https%3A%2F%2Fgithub.com%2Ffocusware-develop%2Faddon-netbird)
 
 [:books: Read the full add-on documentation][docs]
 
