@@ -1,11 +1,15 @@
-ARG BUILD_FROM=ghcr.io/hassio-addons/base:20.0.1
+ARG BUILD_FROM=ghcr.io/hassio-addons/base:20.1.1
 
-FROM netbirdio/netbird:0.63.0 as netbird-container
+FROM netbirdio/netbird:0.72.2 as netbird-container
 
 # hadolint ignore=DL3006
 FROM ${BUILD_FROM}
 
-RUN apk add --no-cache nftables=1.1.5-r2
+RUN apk add --no-cache \
+    iptables=1.8.11-r1 \
+    nftables=1.1.5-r2 \
+    && ln -sf /sbin/xtables-nft-multi /sbin/ip6tables \
+    && ln -sf /sbin/xtables-nft-multi /sbin/iptables
 
 # Copy root filesystem
 COPY rootfs /
