@@ -53,7 +53,7 @@ jobs:
           echo "Security checks passed: same-repo PR from Renovate branch"
 
       - name: Checkout PR branch
-        uses: actions/checkout@v6.0.2
+        uses: actions/checkout@v7.0.1
         with:
           # Use event payload ref which works reliably for same-repo PRs
           ref: ${{ github.event.pull_request.head.ref }}
@@ -82,8 +82,8 @@ jobs:
         id: release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ steps.version.outputs.version }}
         run: |
-          VERSION="${{ steps.version.outputs.version }}"
 
           # Fetch release notes from upstream repo
           RELEASE_BODY=$(gh api "repos/netbirdio/netbird/releases/tags/v${VERSION}" --jq '.body // empty' 2>/dev/null || echo "")
@@ -110,65 +110,45 @@ jobs:
           fi
 
       - name: Update CHANGELOG.md
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          RELEASE_DATE: ${{ steps.release.outputs.release_date }}
+          HAS_NOTES: ${{ steps.release.outputs.has_notes }}
         run: |
-          VERSION="${{ steps.version.outputs.version }}"
-          RELEASE_DATE="${{ steps.release.outputs.release_date }}"
-          HAS_NOTES="${{ steps.release.outputs.has_notes }}"
           CHANGELOG_FILE="netbird/CHANGELOG.md"
 
-          # Check if this version already exists in changelog
-          if grep -q "## \[v${VERSION}\]" "$CHANGELOG_FILE"; then
-            if [ "${FORCE_CHANGELOG_UPDATE:-false}" != "true" ]; then
-              echo "Version v${VERSION} already exists in changelog, skipping update. Set FORCE_CHANGELOG_UPDATE=true to force regenerating this entry."
-              exit 0
-            else
-              echo "Version v${VERSION} already exists in changelog, but FORCE_CHANGELOG_UPDATE=true is set; regenerating changelog entry."
+          # Create fresh changelog with only the latest version
+          # (previous version history is not preserved)
+          {
+            echo "# Changelog"
+            echo ""
+            echo "## [v${VERSION}] - ${RELEASE_DATE}"
+            echo ""
+            echo "### Changed"
+            echo "- Updated to NetBird v${VERSION}"
+
+            # Add upstream release notes if available
+            if [ "$HAS_NOTES" = "true" ]; then
+              echo ""
+              echo "### Upstream Release Notes"
+              # Process release notes - skip leading empty lines
+              started=""
+              while IFS= read -r line; do
+                if [ -z "$line" ] && [ -z "$started" ]; then
+                  continue
+                fi
+                started=true
+                echo "$line"
+              done < /tmp/release_notes.md
             fi
-          fi
+          } > "$CHANGELOG_FILE"
 
-          # Create the new changelog entry with consistent newline handling
-          NEW_ENTRY="## [v${VERSION}] - ${RELEASE_DATE}"$'\n'
-          NEW_ENTRY+=$'\n'"### Changed"$'\n'
-          NEW_ENTRY+="- Updated to NetBird v${VERSION}"$'\n'
-
-          # Add upstream release notes if available
-          if [ "$HAS_NOTES" = "true" ]; then
-            NEW_ENTRY+=$'\n'"### Upstream Release Notes"$'\n'
-            # Process release notes - convert to proper markdown format
-            while IFS= read -r line; do
-              # Skip empty lines at start
-              if [ -z "$line" ] && [ -z "${started:-}" ]; then
-                continue
-              fi
-              started=true
-              NEW_ENTRY+="${line}"$'\n'
-            done < /tmp/release_notes.md
-          fi
-
-          # Insert new entry after the header section (before first existing version entry)
-          # Find the line number of the first existing version entry (e.g., "## [v1.2.3]")
-          FIRST_VERSION_LINE=$(grep -n '^## \[v' "$CHANGELOG_FILE" | head -n 1 | cut -d: -f1 || true)
-
-          if [ -n "$FIRST_VERSION_LINE" ]; then
-            # Insert the new entry before the first existing version entry
-            # Note: No extra blank line needed - header section already ends with one
-            {
-              head -n "$((FIRST_VERSION_LINE - 1))" "$CHANGELOG_FILE"
-              printf '%s\n' "$NEW_ENTRY"
-              tail -n "+$FIRST_VERSION_LINE" "$CHANGELOG_FILE"
-            } > "${CHANGELOG_FILE}.tmp"
-          else
-            # If no version entries are found, append the new entry to the end
-            {
-              cat "$CHANGELOG_FILE"
-              printf '%s\n' "$NEW_ENTRY"
-            } > "${CHANGELOG_FILE}.tmp"
-          fi
-          mv "${CHANGELOG_FILE}.tmp" "$CHANGELOG_FILE"
-
-          echo "Updated changelog with v${VERSION} entry"
+          echo "Updated changelog with v${VERSION} entry (previous versions removed)"
 
       - name: Commit changes
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          PR_HEAD_REF: ${{ github.event.pull_request.head.ref }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -179,7 +159,7 @@ jobs:
           fi
 
           git add netbird/CHANGELOG.md
-          git commit -m "📝 Update CHANGELOG.md for NetBird v${{ steps.version.outputs.version }}"
+          git commit -m "📝 Update CHANGELOG.md for NetBird v${VERSION}"
 
           # Push with retry logic to handle race conditions (e.g., Renovate force-push while running)
           MAX_RETRIES=3
@@ -191,7 +171,7 @@ jobs:
 
             if [ "$attempt" -lt "$MAX_RETRIES" ]; then
               echo "Push failed (attempt $attempt/$MAX_RETRIES), rebasing and retrying..."
-              git pull --rebase origin "${{ github.event.pull_request.head.ref }}"
+              git pull --rebase origin "$PR_HEAD_REF"
             fi
           done
 

@@ -14,11 +14,13 @@ jobs:
   find:
     name: Find add-ons
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     outputs:
       addons: ${{ steps.addons.outputs.addons_list }}
     steps:
       - name: ⤵️ Check out code from GitHub
-        uses: actions/checkout@v6.0.2
+        uses: actions/checkout@v7.0.1
 
       - name: 🔍 Find add-on directories
         id: addons
@@ -27,13 +29,15 @@ jobs:
   lint:
     name: Lint add-on ${{ matrix.path }}
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     needs: find
     strategy:
       matrix:
         path: ${{ fromJson(needs.find.outputs.addons) }}
     steps:
       - name: ⤵️ Check out code from GitHub
-        uses: actions/checkout@v6.0.2
+        uses: actions/checkout@v7.0.1
 
       - name: 🚀 Run Home Assistant Add-on Lint
         uses: frenck/action-addon-linter@v2.21
